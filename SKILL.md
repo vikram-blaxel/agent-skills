@@ -39,15 +39,6 @@ Deploy this skill when:
 | `bl chat <agent-name>` | Test agent interactively |
 | `bl run job <name> --data '{...}'` | Execute batch job |
 
-### Resource types and timeouts
-
-| Resource | Sync timeout | Async timeout | Use case |
-|----------|-------------|---------------|----------|
-| Sandbox | N/A (persistent) | N/A | Agent compute runtime, code execution |
-| Agent (sync) | 100 seconds | N/A | Fast HTTP API responses |
-| Agent (async) | N/A | 10 minutes | Longer-running agent tasks |
-| Job | N/A | 24 hours | Batch processing, parallel tasks |
-| MCP Server | N/A | 10 minutes | Tool exposure via HTTP |
 
 ### blaxel.toml structure
 
@@ -110,7 +101,104 @@ authenticationType = "public"  # functions only
 | GitHub integration | Production workflow | Auto-deploy on push to main |
 | Console UI | One-off deployments | No CLI needed, visual setup |
 
-## Workflow
+## Workflows
+
+### Sandbox workflow (primary use case)
+
+This is the most common workflow: create a sandbox, run commands in it, and get a preview URL.
+
+Read individual SDK files for detailed explanations and code examples:
+
+- ./references/sdk-python.md
+- ./references/sdk-typescript.md
+
+Each SDK README contains:
+- An overview of the SDK
+- Requirements
+- Code examples for working with sandboxes, volumes, agents, batch jobs, MCP
+- Additional useful information
+
+#### Step 1: Create a sandbox
+
+Use a public image from the Blaxel Hub (https://github.com/blaxel-ai/sandbox/tree/main/hub):
+- `blaxel/base-image:latest` — minimal Linux
+- `blaxel/node:latest` — Node.js
+- `blaxel/nextjs:latest` — Next.js
+- `blaxel/vite:latest` — Vite
+- `blaxel/expo:latest` — Expo (React Native)
+- `blaxel/py-app:latest` — Python
+
+Or use a custom template image you deployed yourself.
+
+Declare the ports you need at creation time. Ports cannot be added after creation. Ports 80, 443, and 8080 are reserved.
+
+Use `createIfNotExists` / `create_if_not_exists` to reuse an existing sandbox by name or create a new one.
+
+#### Step 2: Write files and run commands
+
+
+IMPORTANT: Dev servers must bind to `0.0.0.0` (not `localhost`) to be reachable through preview URLs. Use `--host 0.0.0.0` or the `HOST` env variable.
+
+#### Step 3: Create a preview URL
+
+
+Use `createIfNotExists` / `create_if_not_exists` on previews too.
+
+For private previews, set `public: false` and create a token
+
+#### Step 4: Manage the sandbox
+
+### Sandbox templates (custom images)
+
+When you need a reusable environment (e.g. an Astro project with all deps pre-installed), create a template:
+
+```shell
+bl new sandbox my-astro-template
+cd my-astro-template
+```
+
+This creates: `blaxel.toml`, `Dockerfile`, `entrypoint.sh`, `Makefile`.
+
+Customize the Dockerfile. Always include the sandbox-api binary:
+```dockerfile
+FROM node:22-alpine
+WORKDIR /app
+COPY --from=ghcr.io/blaxel-ai/sandbox:latest /sandbox-api /usr/local/bin/sandbox-api
+RUN npm install -g astro
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+```
+
+The entrypoint.sh must start the sandbox-api:
+```bash
+#!/bin/sh
+/usr/local/bin/sandbox-api &
+while ! nc -z 127.0.0.1 8080; do sleep 0.1; done
+echo "Sandbox API ready"
+# Optionally start a process via the sandbox API:
+# curl http://127.0.0.1:8080/process -X POST -d '{"workingDir":"/app","command":"npm run dev","waitForCompletion":false}' -H "Content-Type: application/json"
+wait
+```
+
+Deploy the template:
+```shell
+bl deploy
+```
+
+Then retrieve the IMAGE_ID and use it to create sandboxes:
+```shell
+bl get sandboxes my-astro-template -ojson | jq -r '.[0].spec.runtime.image'
+```
+
+```typescript
+const sandbox = await SandboxInstance.create({
+  name: "project-sandbox",
+  image: "IMAGE_ID",
+  memory: 4096,
+  ports: [{ target: 3000, protocol: "HTTP" }],
+});
+```
 
 ### Deploy an agent
 
@@ -156,49 +244,20 @@ authenticationType = "public"  # functions only
 5. **Deploy**: Run `bl deploy`
 6. **Execute**: Use `bl run job name --data '{...}'` or HTTP trigger
 
-## Important notes
+## Important gotchas
 
-- **Preview URLs**: Sandbox preview URLs must be created at the time of sandbox creation. They cannot be created after the sandbox is created.
-- **Server binding**: Always bind to `HOST` and `PORT` environment variables, not hardcoded `localhost` or `127.0.0.1`. Blaxel injects these; preview URLs will fail with 502 if you don't.
-- **Sandbox ports**: Reserved ports (80, 443, 8080) cannot be exposed. Expose custom ports at sandbox creation time; cannot add ports post-creation.
-- **Timeout confusion**: Sync agents timeout at 100s (connection open), async at 10min (connection closed). Jobs can run 24h but individual tasks timeout at configured value.
-- **Volume size**: Always provision 20-30% extra space beyond template data size or volume creation fails.
-- **Secrets in git**: Add `.env` to `.gitignore` before committing. Use `--env-file` flag to specify production secrets separately.
-- **Sandbox lifecycle**: Don't delete sandboxes unnecessarily. Suspension is free (except snapshot storage); deletion loses instant-resume benefit. Use TTL for automatic cleanup.
-- **Authentication scope**: SDK auto-authenticates on Blaxel. Locally, run `bl login` once; it persists. For remote servers, use `BL_WORKSPACE` and `BL_API_KEY` env vars.
-- **Revisions**: Each `bl deploy` creates a new revision. Only last 5 revisions kept. Revisions are immutable; use git for version control.
-- **Hot reload issues**: Webpack hot reload may fail if client tries to connect to local dev port instead of sandbox preview URL. Conditionally set `webSocketURL.port` based on environment.
-
-## Verification checklist
-
-Before submitting work:
-
-- [ ] Server binds to `process.env.HOST` and `process.env.PORT` (not hardcoded localhost)
-- [ ] `.env` file added to `.gitignore` and contains only secrets, not config
-- [ ] `blaxel.toml` specifies correct `type` (agent, function, job, sandbox)
-- [ ] All required environment variables documented in `blaxel.toml` `[env]` section
-- [ ] Tested locally with `bl serve` and verified endpoint works
-- [ ] Sandbox ports (if used) exposed at creation time, not post-creation
-- [ ] Volume size provisioned with 20-30% buffer if using templates
-- [ ] Timeout values appropriate for workload (100s sync, 10min async, 24h jobs)
-- [ ] Logs checked with `bl logs` for errors or warnings
-- [ ] Deployment region specified or confirmed default is acceptable
-- [ ] Public/private access set correctly (agents default to private)
+- Ports must be declared at sandbox creation time — they cannot be added later
+- Ports 80, 443, 8080 are reserved by Blaxel
+- Dev servers must bind to `0.0.0.0`, not `localhost`, for preview URLs to work
+- ~50% of sandbox memory is reserved for the in-memory filesystem (tmpfs). Use volumes for extra storage
+- Sandboxes auto-scale to zero after ~5s of inactivity. State is preserved in standby and resumes in <25ms
+- `waitForCompletion` has a max timeout of 60 seconds. For longer processes, use `process.wait()` with `maxWait`
+- Secrets should never go in `[env]` — use the Variables-and-secrets page in the Console
 
 ## Resources
 
 - Deployment configuration reference: https://docs.blaxel.ai/deployment-reference
 - CLI command reference: https://docs.blaxel.ai/cli-reference/introduction
 
-Read individual SDK files for detailed explanations and code examples:
-
-- ./references/sdk-python.md
-- ./references/sdk-typescript.md
-
-Each SDK README contains:
-- An overview of the SDK
-- Requirements
-- Code examples for working with sandboxes, volumes, agents, batch jobs, MCP
-- Additional useful information
 
 For additional documentation, see: https://docs.blaxel.ai/llms.txt
