@@ -1,124 +1,43 @@
 ---
 name: blaxel
-description: Use when deploying AI agents, creating sandboxes for code execution, hosting MCP servers, running batch jobs, or managing serverless AI infrastructure. Reach for this skill when building agentic systems that need compute environments, tool servers, or orchestrated workflows.
-
+description: Use when creating cloud sandboxes (microVMs) to run code, start dev servers, and generate live preview URLs. Also covers deploying AI agents, MCP servers, and batch jobs on Blaxel's serverless infrastructure. Reach for this skill when you need isolated compute environments, real-time app previews, or to deploy agentic workloads.
 ---
 
 # Blaxel Skill Reference
 
-## Product summary
+## What is Blaxel
 
-Blaxel is a perpetual sandbox platform built for AI agents. It provides serverless compute infrastructure including instant-launching sandboxes (resume from standby in <25ms), agent hosting, batch jobs, and MCP server deployment. Agents use the Blaxel SDK (`@blaxel/core` for TypeScript, `blaxel` for Python) to programmatically create and manage resources. The CLI (`bl` command) handles authentication, deployment, and resource management. Key files: `blaxel.toml` (deployment config), `.env` (secrets), `package.json` or `pyproject.toml` (dependencies). Primary docs: https://docs.blaxel.ai
+Blaxel (https://blaxel.ai) is a cloud platform that gives AI agents their own compute environments. Its flagship product is perpetual sandboxes: instant-launching microVMs that resume from standby in under 25ms and scale to zero after a few seconds of inactivity.
 
-## When to use
+You use Blaxel primarily to:
+- Spin up a sandbox, install dependencies, run a dev server, and expose a live preview URL
+- Build and deploy sandbox templates (custom Docker images) for reusable environments
+- Deploy AI agents, MCP servers, and batch jobs as serverless endpoints
 
-Deploy this skill when:
-- Building AI agents that need isolated compute environments (sandboxes)
-- Hosting agents as serverless HTTP endpoints with auto-scaling
-- Creating MCP servers to expose tools/capabilities to agents
-- Running batch processing tasks in parallel (jobs)
-- Managing multi-region deployments or complex agent architectures
-- Integrating with LLM APIs, databases, or external services
-- Needing observability, tracing, and telemetry for agent runs
-- Developing locally and deploying to production without infrastructure management
+SDKs: TypeScript (`@blaxel/core`) and Python (`blaxel`)
+CLI: `bl` (install from https://docs.blaxel.ai/cli-reference/introduction)
+Docs: https://docs.blaxel.ai
 
-## Quick reference
+## Authentication
 
-### Essential CLI commands
-
-| Command | Purpose |
-|---------|---------|
-| `bl login` | Authenticate to workspace |
-| `bl new agent\|job\|mcp\|sandbox` | Initialize new resource |
-| `bl serve [--hotreload]` | Run locally on port 1338 |
-| `bl deploy [-d directory]` | Build and deploy to production |
-| `bl get sandboxes\|agents\|functions\|jobs` | List resources |
-| `bl logs <resource-name>` | Stream logs |
-| `bl connect sandbox <name>` | Open interactive terminal |
-| `bl apply -f manifest.yaml` | Deploy from YAML manifest |
-| `bl chat <agent-name>` | Test agent interactively |
-| `bl run job <name> --data '{...}'` | Execute batch job |
-
-
-### blaxel.toml structure
-
-```toml
-type = "agent"  # agent, function, job, sandbox, volume-template
-name = "my-resource"
-public = false  # only for agents
-
-[build]
-slim = true  # automatic image slimming
-
-[env]
-MY_VAR = "value"  # non-secret config
-
-[runtime]
-memory = 4096  # MB
-timeout = 900  # seconds (jobs/agents)
-maxConcurrentTasks = 10  # jobs only
-
-[[triggers]]
-id = "my-trigger"
-type = "http"  # http, http-async, schedule
-[triggers.configuration]
-path = "/webhook"
-authenticationType = "public"  # functions only
+Log in locally (recommended for development):
+```shell
+bl login
 ```
 
-### SDK authentication priority
+Or set environment variables (for remote/CI environments):
+```shell
+export BL_WORKSPACE=your-workspace
+export BL_API_KEY=your-api-key
+```
 
-1. Running on Blaxel (automatic)
-2. `.env` file: `BL_WORKSPACE` and `BL_API_KEY`
-3. Environment variables on machine
-4. Local config from `bl login`
+When running on Blaxel itself, authentication is automatic.
 
-## Decision guidance
-
-### When to use each compute option
-
-| Scenario | Choose | Reason |
-|----------|--------|--------|
-| Agent needs OS access, file system, processes | Sandbox | Full VM with <25ms resume, persistent state |
-| Agent responds to HTTP requests in <100s | Agent (sync) | Optimized for fast request-response |
-| Agent processes data for minutes | Agent (async) | Maintains connection up to 10 min |
-| Many parallel sub-tasks, long duration | Job | Batch processing, up to 24h per task |
-| Expose reusable tools to multiple agents | MCP Server | Decoupled tool layer, <25ms boot |
-
-### Sandbox vs Volume for persistence
-
-| Need | Use | Trade-off |
-|------|-----|-----------|
-| Fast resume, state retention across sessions | Sandbox suspension | Charged for snapshot storage, not guaranteed forever |
-| Critical data surviving indefinitely | Volume | ~400-600ms cold boot when recreating sandbox |
-| Both speed and durability | Sandbox + Volume | Optimal: suspend for speed, volume for safety |
-
-### Deployment: CLI vs GitHub vs Console
-
-| Method | When | Benefit |
-|--------|------|---------|
-| `bl deploy` | Iterating locally | Full control, immediate feedback |
-| GitHub integration | Production workflow | Auto-deploy on push to main |
-| Console UI | One-off deployments | No CLI needed, visual setup |
-
-## Workflows
-
-### Sandbox workflow (primary use case)
+## Sandbox workflow (primary use case)
 
 This is the most common workflow: create a sandbox, run commands in it, and get a preview URL.
 
-Read individual SDK files for detailed explanations and code examples:
-
-- ./references/sdk-python.md
-- ./references/sdk-typescript.md
-
-Each SDK README contains:
-- An overview of the SDK
-- Requirements
-- Code examples for working with sandboxes, volumes, agents, batch jobs, MCP
-- Additional useful information
-
-#### Step 1: Create a sandbox
+### Step 1: Create a sandbox
 
 Use a public image from the Blaxel Hub (https://github.com/blaxel-ai/sandbox/tree/main/hub):
 - `blaxel/base-image:latest` — minimal Linux
@@ -132,23 +51,156 @@ Or use a custom template image you deployed yourself.
 
 Declare the ports you need at creation time. Ports cannot be added after creation. Ports 80, 443, and 8080 are reserved.
 
+```typescript
+import { SandboxInstance } from "@blaxel/core";
+
+const sandbox = await SandboxInstance.create({
+  name: "my-sandbox",
+  image: "blaxel/node:latest",
+  memory: 4096,
+  ports: [{ target: 3000, protocol: "HTTP" }],
+});
+```
+
+```python
+from blaxel.core import SandboxInstance
+
+sandbox = await SandboxInstance.create({
+  "name": "my-sandbox",
+  "image": "blaxel/node:latest",
+  "memory": 4096,
+  "ports": [{"target": 3000}],
+})
+```
+
 Use `createIfNotExists` / `create_if_not_exists` to reuse an existing sandbox by name or create a new one.
 
-#### Step 2: Write files and run commands
+### Step 2: Write files and run commands
 
+```typescript
+// Write files
+await sandbox.fs.write("/app/package.json", JSON.stringify({
+  name: "my-app",
+  scripts: { dev: "astro dev --host 0.0.0.0 --port 3000" },
+  dependencies: { "astro": "latest" }
+}));
+
+// Or write multiple files at once
+await sandbox.fs.writeTree([
+  { path: "src/pages/index.astro", content: "<h1>Hello</h1>" },
+  { path: "astro.config.mjs", content: "import { defineConfig } from 'astro/config';\nexport default defineConfig({});" },
+], "/app");
+
+// Execute a command and wait for it to finish
+const install = await sandbox.process.exec({
+  name: "install",
+  command: "npm install",
+  workingDir: "/app",
+  waitForCompletion: true,
+  timeout: 60000,
+});
+
+// Start a long-running dev server (don't wait for completion)
+const devServer = await sandbox.process.exec({
+  name: "dev-server",
+  command: "npm run dev",
+  workingDir: "/app",
+  waitForPorts: [3000],  // returns once port 3000 is open
+});
+```
+
+```python
+await sandbox.fs.write("/app/package.json", '{"name":"my-app","scripts":{"dev":"astro dev --host 0.0.0.0 --port 3000"},"dependencies":{"astro":"latest"}}')
+
+await sandbox.fs.write_tree([
+  {"path": "src/pages/index.astro", "content": "<h1>Hello</h1>"},
+  {"path": "astro.config.mjs", "content": "import { defineConfig } from 'astro/config';\nexport default defineConfig({});"},
+], "/app")
+
+install = await sandbox.process.exec({
+  "name": "install",
+  "command": "npm install",
+  "working_dir": "/app",
+  "wait_for_completion": True,
+  "timeout": 60000,
+})
+
+dev_server = await sandbox.process.exec({
+  "name": "dev-server",
+  "command": "npm run dev",
+  "working_dir": "/app",
+  "wait_for_ports": [3000],
+})
+```
 
 IMPORTANT: Dev servers must bind to `0.0.0.0` (not `localhost`) to be reachable through preview URLs. Use `--host 0.0.0.0` or the `HOST` env variable.
 
-#### Step 3: Create a preview URL
+### Step 3: Create a preview URL
 
+```typescript
+const preview = await sandbox.previews.create({
+  metadata: { name: "app-preview" },
+  spec: { port: 3000, public: true },
+});
+const url = preview.spec?.url;
+// url => https://xxxx.us-pdx-1.preview.bl.run
+```
+
+```python
+preview = await sandbox.previews.create({
+  "metadata": {"name": "app-preview"},
+  "spec": {"port": 3000, "public": True},
+})
+url = preview.spec.url
+```
 
 Use `createIfNotExists` / `create_if_not_exists` on previews too.
 
-For private previews, set `public: false` and create a token
+For private previews, set `public: false` and create a token:
+```typescript
+const preview = await sandbox.previews.create({
+  metadata: { name: "private-preview" },
+  spec: { port: 3000, public: false },
+});
+const token = await preview.tokens.create(new Date(Date.now() + 10 * 60 * 1000));
+// Access: preview.spec.url + "?bl_preview_token=" + token.value
+```
 
-#### Step 4: Manage the sandbox
+### Step 4: Manage the sandbox
 
-### Sandbox templates (custom images)
+```typescript
+// Reconnect to an existing sandbox
+const sandbox = await SandboxInstance.get("my-sandbox");
+
+// List files
+const { subdirectories, files } = await sandbox.fs.ls("/app");
+
+// Read a file
+const content = await sandbox.fs.read("/app/src/pages/index.astro");
+
+// Get process info / logs
+const proc = await sandbox.process.get("dev-server");
+const logs = proc.logs; // available if waitForCompletion was true
+
+// Kill a process
+await sandbox.process.kill("dev-server");
+
+// Delete the sandbox (all data is erased)
+await sandbox.delete();
+```
+
+```python
+sandbox = await SandboxInstance.get("my-sandbox")
+
+result = await sandbox.fs.ls("/app")
+content = await sandbox.fs.read("/app/src/pages/index.astro")
+
+proc = await sandbox.process.get("dev-server")
+await sandbox.process.kill("dev-server")
+await sandbox.delete()
+```
+
+## Sandbox templates (custom images)
 
 When you need a reusable environment (e.g. an Astro project with all deps pre-installed), create a template:
 
@@ -200,49 +252,55 @@ const sandbox = await SandboxInstance.create({
 });
 ```
 
-### Deploy an agent
+## Tutorials and Examples
 
-1. **Initialize**: Run `bl new agent` and choose framework (LangChain, CrewAI, Claude SDK, etc.)
-2. **Develop**: Edit `src/agent.ts` or `src/agent.py` with your agent logic; use Blaxel SDK to access sandboxes, MCP servers, models
-3. **Configure**: Create/edit `blaxel.toml` with resource name, memory, environment variables, triggers
-4. **Test locally**: Run `bl serve --hotreload` and test at `http://localhost:1338` with POST `{"inputs": "..."}`
-5. **Deploy**: Run `bl deploy` (or `bl deploy -d path/to/agent` for subdirectory)
-6. **Query**: Use `bl chat agent-name` or POST to the generated endpoint
-7. **Monitor**: Check logs with `bl logs agent-name`
+### Sandboxes
+Astro: https://docs.blaxel.ai/Tutorials/Astro
+Expo: https://docs.blaxel.ai/Tutorials/Expo
+Next.js: https://docs.blaxel.ai/Tutorials/Nextjs
 
-### Create and use a sandbox
+### Agents
+Overview: https://docs.blaxel.ai/Tutorials/Agents-Overview
 
-1. **Create**: Use SDK in your agent code to create a sandbox.
-2. **Execute**: Run processes, read/write files via SDK or MCP tools
-3. **Persist**: Attach volumes for long-term data; rely on suspension for session state
-4. **Clean up**: Set TTL expiration or manually delete when done
+## Core CLI commands
 
-### Create and use a sandbox preview
+For CLI commands that may prompt for input (like confirmations), add `-y` to auto-confirm when running in non-interactive / no-TTY environments (e.g. scripts, CI, agents).
 
-1. **Create sandbox with exposed port**: Use SDK in your agent code to create a preview. Ensure the target port is declared at sandbox creation time — ports cannot be added post-creation
-2. **Start a service**: Run your web server inside the sandbox, binding to `0.0.0.0` (not `localhost`) on the chosen port
-3. **Create a preview URL**: Generate a public or private URL for the running service
-4. **Optional — private preview**: Set `public: false`; callers must pass the preview token as a request parameter or header
-5. **Optional — custom prefix**: Set `prefixUrl: "my-app"` / `prefix_url: "my-app"` for a stable, recognizable URL
-6. **Hot reload caveat**: If using a bundler with WebSocket hot reload (e.g. Vite/Webpack), conditionally set `webSocketURL.port` based on environment to prevent the client from trying to connect to the local dev port instead of the preview URL
+| Command | Purpose |
+|---------|---------|
+| `bl login` | Authenticate to workspace |
+| `bl new sandbox\|agent\|job\|mcp NAME` | Initialize new resource from template |
+| `bl deploy` | Build and deploy resource to Blaxel |
+| `bl deploy -d DIR` | Deploy from a specific directory |
+| `bl serve` | Run resource locally for testing |
+| `bl serve --hotreload` | Run locally with hot reload |
+| `bl get sandboxes\|agents\|jobs\|functions` | List resources |
+| `bl get sandbox NAME --watch` | Watch a sandbox deployment status |
+| `bl delete sandbox\|agent\|job\|function NAME` | Remove resource |
+| `bl connect sandbox NAME` | Open interactive terminal in sandbox |
+| `bl chat AGENT-NAME` | Interactive chat with deployed agent |
+| `bl run job NAME --data JSON` | Execute a deployed batch job |
 
-### Deploy an MCP server
+## blaxel.toml structure
 
-1. **Initialize**: Run `bl new mcp`
-2. **Implement**: Define tools in `src/server.ts` or `src/server.py` using MCP SDK
-3. **Configure**: Set `type = "function"` in `blaxel.toml`, specify transport as `http-stream`
-4. **Test**: Run `bl serve` or `pnpm inspect` to test locally
-5. **Deploy**: Run `bl deploy`
-6. **Invoke**: Call endpoint `https://run.blaxel.ai/{workspace}/functions/{name}/mcp` from agents
+```toml
+name = "my-resource"
+type = "sandbox"  # sandbox, agent, function, job, volume-template
 
-### Run a batch job
+[env]
+NODE_ENV = "development"  # NOT for secrets — use Variables-and-secrets
 
-1. **Initialize**: Run `bl new job`
-2. **Implement**: Define task logic in `src/index.ts` or `src/index.py`; accept task parameters
-3. **Configure**: Set `type = "job"` in `blaxel.toml`, define `maxConcurrentTasks`, `timeout`, optional cron trigger
-4. **Test**: Run `bl serve` and POST `{"tasks": [{"param": "value"}]}`
-5. **Deploy**: Run `bl deploy`
-6. **Execute**: Use `bl run job name --data '{...}'` or HTTP trigger
+[runtime]
+memory = 4096       # MB
+generation = "mk3"
+# timeout = 900     # seconds (agents max 900, jobs max 86400)
+
+# Ports (sandbox only)
+[[runtime.ports]]
+name = "dev-server"
+target = 3000
+protocol = "tcp"
+```
 
 ## Important gotchas
 
@@ -254,10 +312,70 @@ const sandbox = await SandboxInstance.create({
 - `waitForCompletion` has a max timeout of 60 seconds. For longer processes, use `process.wait()` with `maxWait`
 - Secrets should never go in `[env]` — use the Variables-and-secrets page in the Console
 
+## Other Blaxel resources
+
+### Agents Hosting
+
+Deploy AI agents as serverless auto-scaling HTTP endpoints. Framework-agnostic (LangChain, CrewAI, Claude SDK, etc.).
+
+```shell
+bl new agent
+# develop in src/agent.ts or src/agent.py
+bl serve            # test locally
+bl deploy           # deploy
+bl chat AGENT-NAME  # query
+```
+
+Sync endpoint handles requests up to 100s, async endpoint up to 10 minutes.
+Docs: https://docs.blaxel.ai/Agents/Overview
+
+### MCP Servers Hosting
+
+Deploy custom tool servers following the MCP protocol.
+
+```shell
+bl new mcp
+# implement in src/server.ts or src/server.py
+bl serve --hotreload  # test locally
+bl deploy
+```
+
+Agents connect to deployed MCP servers via SDK:
+```typescript
+const tools = await blTools(["functions/my-mcp-server"]);
+```
+
+Every sandbox also exposes its own built-in MCP server at `https://<SANDBOX_URL>/mcp` with tools for process management, filesystem, and code generation.
+Docs: https://docs.blaxel.ai/Functions/Overview
+
+### Batch Jobs
+
+Scalable compute for parallel background tasks (minutes to hours).
+
+```shell
+bl new job
+# implement in src/index.ts or src/index.py
+bl deploy
+bl run job NAME --data '{"tasks": [...]}'
+```
+
+Max 24h per task. Set `maxConcurrentTasks` in blaxel.toml.
+Docs: https://docs.blaxel.ai/Jobs/Overview
+
 ## Resources
 
 - Deployment configuration reference: https://docs.blaxel.ai/deployment-reference
 - CLI command reference: https://docs.blaxel.ai/cli-reference/introduction
 
+Read individual SDK files for detailed explanations and code examples:
+
+- ./references/sdk-python.md
+- ./references/sdk-typescript.md
+
+Each SDK README contains:
+- An overview of the SDK
+- Requirements
+- Code examples for working with sandboxes, volumes, agents, batch jobs, MCP
+- Additional useful information
 
 For additional documentation, see: https://docs.blaxel.ai/llms.txt
