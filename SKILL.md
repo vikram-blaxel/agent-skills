@@ -20,9 +20,16 @@ Docs: https://docs.blaxel.ai
 
 ## Authentication
 
+The SDK authenticates using these sources in priority order:
+
+1. Blaxel CLI, when logged in
+2. Environment variables in `.env` file (`BL_WORKSPACE`, `BL_API_KEY`)
+3. System environment variables
+4. Blaxel configuration file (`~/.blaxel/config.yaml`)
+
 Log in locally (recommended for development):
 ```shell
-bl login
+bl login YOUR-WORKSPACE
 ```
 
 Or set environment variables (for remote/CI environments):
@@ -54,9 +61,9 @@ Declare the ports you need at creation time. Ports cannot be added after creatio
 ```typescript
 import { SandboxInstance } from "@blaxel/core";
 
-const sandbox = await SandboxInstance.create({
+const sandbox = await SandboxInstance.createIfNotExists({
   name: "my-sandbox",
-  image: "blaxel/node:latest",
+  image: "blaxel/base-image:latest",
   memory: 4096,
   ports: [{ target: 3000, protocol: "HTTP" }],
 });
@@ -65,11 +72,11 @@ const sandbox = await SandboxInstance.create({
 ```python
 from blaxel.core import SandboxInstance
 
-sandbox = await SandboxInstance.create({
+sandbox = await SandboxInstance.create_if_not_exists({
   "name": "my-sandbox",
-  "image": "blaxel/node:latest",
+  "image": "blaxel/base-image:latest",
   "memory": 4096,
-  "ports": [{"target": 3000}],
+  "ports": [{"target": 3000, "protocol": "HTTP"}],
 })
 ```
 
@@ -138,7 +145,7 @@ IMPORTANT: Dev servers must bind to `0.0.0.0` (not `localhost`) to be reachable 
 ### Step 3: Create a preview URL
 
 ```typescript
-const preview = await sandbox.previews.create({
+const preview = await sandbox.previews.createIfNotExists({
   metadata: { name: "app-preview" },
   spec: { port: 3000, public: true },
 });
@@ -147,23 +154,21 @@ const url = preview.spec?.url;
 ```
 
 ```python
-preview = await sandbox.previews.create({
+preview = await sandbox.previews.create_if_not_exists({
   "metadata": {"name": "app-preview"},
   "spec": {"port": 3000, "public": True},
 })
 url = preview.spec.url
 ```
 
-Use `createIfNotExists` / `create_if_not_exists` on previews too.
-
 For private previews, set `public: false` and create a token:
 ```typescript
-const preview = await sandbox.previews.create({
+const preview = await sandbox.previews.createIfNotExists({
   metadata: { name: "private-preview" },
   spec: { port: 3000, public: false },
 });
 const token = await preview.tokens.create(new Date(Date.now() + 10 * 60 * 1000));
-// Access: preview.spec.url + "?bl_preview_token=" + token.value
+// Access: preview.spec?.url + "?bl_preview_token=" + token.value
 ```
 
 ### Step 4: Manage the sandbox
@@ -196,6 +201,7 @@ result = await sandbox.fs.ls("/app")
 content = await sandbox.fs.read("/app/src/pages/index.astro")
 
 proc = await sandbox.process.get("dev-server")
+# proc.logs available if wait_for_completion was True
 await sandbox.process.kill("dev-server")
 await sandbox.delete()
 ```
@@ -244,7 +250,7 @@ bl get sandboxes my-astro-template -ojson | jq -r '.[0].spec.runtime.image'
 ```
 
 ```typescript
-const sandbox = await SandboxInstance.create({
+const sandbox = await SandboxInstance.createIfNotExists({
   name: "project-sandbox",
   image: "IMAGE_ID",
   memory: 4096,
