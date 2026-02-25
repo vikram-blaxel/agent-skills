@@ -156,8 +156,9 @@ authenticationType = "public"  # functions only
 5. **Deploy**: Run `bl deploy`
 6. **Execute**: Use `bl run job name --data '{...}'` or HTTP trigger
 
-## Common gotchas
+## Important notes
 
+- **Preview URLs**: Sandbox preview URLs must be created at the time of sandbox creation. They cannot be created after the sandbox is created.
 - **Server binding**: Always bind to `HOST` and `PORT` environment variables, not hardcoded `localhost` or `127.0.0.1`. Blaxel injects these; preview URLs will fail with 502 if you don't.
 - **Sandbox ports**: Reserved ports (80, 443, 8080) cannot be exposed. Expose custom ports at sandbox creation time; cannot add ports post-creation.
 - **Timeout confusion**: Sync agents timeout at 100s (connection open), async at 10min (connection closed). Jobs can run 24h but individual tasks timeout at configured value.
