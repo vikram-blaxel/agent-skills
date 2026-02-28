@@ -131,7 +131,7 @@ sandbox = await SandboxInstance.create_if_not_exists({
 | Auto-delete | `autoDeleteInterval: 43200` (minutes) | `lifecycle: { expirationPolicies: [{ type: 'ttl', value: '30d', action: 'delete' }] }` |
 | Ephemeral | `ephemeral: true` | Use `sandbox.delete()` when done |
 | Name | `name: 'my-sandbox'` | `name: 'my-sandbox'` |
-| Ports | N/A (all ports accessible via preview URL) | `ports: [{ target: 3000, protocol: 'HTTP' }]` (declared at creation) |
+| Ports | N/A (all ports accessible via preview URL) | `ports: [{ target: 3000, protocol: 'HTTP' }]` (declared at creation). **Must include every port used by previews** |
 | TTL | N/A | `ttl: '24h'` |
 | GPU | `resources: { gpu: 1 }` | N/A (Blaxel sandboxes are CPU-only) |
 | Disk | `resources: { disk: 10 }` (GiB) | N/A (Blaxel uses ~50% memory for tmpfs; use volumes for extra storage) |
@@ -285,13 +285,16 @@ await sandbox.process.executeSessionCommand('dev', {
   command: 'npm run dev',
   runAsync: true,
 })
+const logs = await sandbox.process.getSessionCommandLogs('dev', commandId)
 
 // AFTER (Blaxel) - native background mode with port waiting
+// IMPORTANT: getSessionCommandLogs / session log retrieval → use onLog callback on process.exec()
 const devServer = await sandbox.process.exec({
   name: 'dev-server',
   command: 'npm run dev -- --host 0.0.0.0',
   workingDir: '/app',
   waitForPorts: [3000],  // returns once port 3000 is open
+  onLog: (log) => console.log(log),  // replaces getSessionCommandLogs
 })
 ```
 
@@ -307,13 +310,16 @@ await sandbox.process.execute_session_command("dev", {
     "command": "npm run dev",
     "run_async": True,
 })
+logs = await sandbox.process.get_session_command_logs("dev", command_id)
 
 # AFTER (Blaxel) - native background mode with port waiting
+# IMPORTANT: get_session_command_logs / session log retrieval → use on_log callback on process.exec()
 dev_server = await sandbox.process.exec({
     "name": "dev-server",
     "command": "npm run dev -- --host 0.0.0.0",
     "working_dir": "/app",
     "wait_for_ports": [3000],
+    "on_log": lambda log: print(log),  # replaces get_session_command_logs
 })
 ```
 
@@ -480,6 +486,8 @@ handle = await sandbox.fs.watch("/app/src", lambda event: print(f"Changed: {even
 
 Daytona provides `getPreviewLink(port)` for standard access, plus signed URLs with expiration. Blaxel has dedicated preview URL management with public/private access and token-based auth.
 
+> **IMPORTANT:** When migrating preview URLs, you MUST also declare the preview port in the sandbox `ports` array at creation time. Blaxel requires ports to be declared upfront — they cannot be added later. If the port is missing from the `ports` array, the preview URL will not work. For example, if the Daytona code uses `getPreviewLink(3000)`, ensure the sandbox creation includes `ports: [{ target: 3000, protocol: 'HTTP' }]`.
+
 **TypeScript:**
 ```typescript
 // BEFORE (Daytona)
@@ -489,6 +497,7 @@ const signed = await sandbox.getSignedPreviewUrl(3000, 3600) // 1 hour
 await sandbox.expireSignedPreviewUrl(3000, signed.token)
 
 // AFTER (Blaxel) - dedicated preview URL with public/private access control
+// IMPORTANT: port 3000 must be declared in sandbox creation ports array
 const preview = await sandbox.previews.createIfNotExists({
   metadata: { name: 'app-preview' },
   spec: { port: 3000, public: true },
@@ -516,6 +525,7 @@ signed = await sandbox.get_signed_preview_url(3000, 3600)
 await sandbox.expire_signed_preview_url(3000, signed.token)
 
 # AFTER (Blaxel)
+# IMPORTANT: port 3000 must be declared in sandbox creation ports array
 preview = await sandbox.previews.create_if_not_exists({
     "metadata": {"name": "app-preview"},
     "spec": {"port": 3000, "public": True},
@@ -549,6 +559,7 @@ await private_preview.tokens.delete(token.id)
 | Wait for start | `sandbox.waitUntilStarted(timeout)` | Not needed — auto-resumes in <25ms |
 | Wait for stop | `sandbox.waitUntilStopped(timeout)` | Not needed |
 | Wait for process | Poll session command logs | `sandbox.process.wait('name', { maxWait, interval })` |
+| Session command logs | `getSessionCommandLogs(session, id)` | Use `onLog` callback on `process.exec()` |
 | Stop process | Kill via session | `sandbox.process.stop('name')` |
 | List processes | `sandbox.process.listSessions()` | `sandbox.process.list()` |
 | Get process | `sandbox.process.getSession(id)` | `sandbox.process.get('name')` |
@@ -812,7 +823,7 @@ const sandbox = await SandboxInstance.createIfNotExists({
 
 - **No client instantiation**: Blaxel SDK uses static methods on `SandboxInstance`; no need to create a `Daytona()` client
 - **Memory units**: Daytona uses GB, Blaxel uses MB (e.g., `2` GB in Daytona = `2048` MB in Blaxel)
-- **Ports declared at creation**: Blaxel requires ports at sandbox creation time; they cannot be added later. Ports 80, 443, 8080 are reserved
+- **Ports declared at creation**: Blaxel requires ports at sandbox creation time; they cannot be added later. Ports 80, 443, 8080 are reserved. **When migrating preview URLs, always add the preview port to the sandbox `ports` array** — without it, the preview will not work
 - **Region format**: Daytona uses `'us'`/`'eu'`/`'asia'`; Blaxel uses specific region IDs like `'us-pdx-1'`
 - **Auto scale-to-zero**: Both support auto scale-to-zero. Blaxel sandboxes auto-pause after ~5s of inactivity and resume in <25ms. No manual stop/start needed. Use `lifecycle: { expirationPolicies: [{ type: 'ttl-idle', value: '7d', action: 'delete' }] }` for idle-based deletion
 - **Preview URLs**: Blaxel has native preview URL support with public/private access control, token-based auth, and token revocation. Daytona's `getPreviewLink()` / signed URLs map to Blaxel's `previews.createIfNotExists()` + `tokens.create()`
