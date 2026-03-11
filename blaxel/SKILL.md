@@ -1,6 +1,6 @@
 ---
 name: blaxel
-description: Use when creating cloud sandboxes (microVMs) to run code, start dev servers, and generate live preview URLs. Also covers deploying AI agents, MCP servers, and batch jobs on Blaxel's serverless infrastructure. Reach for this skill when you need isolated compute environments, real-time app previews, or to deploy agentic workloads.
+description: Use when creating cloud sandboxes (microVMs) to run code, start dev servers, and generate live preview URLs. Also covers deploying AI agents, MCP servers, batch jobs, and Agent Drives (shared filesystems) on Blaxel's serverless infrastructure. Reach for this skill when you need isolated compute environments, real-time app previews, shared file storage across sandboxes, or to deploy agentic workloads.
 ---
 
 # Blaxel Skill Reference
@@ -317,6 +317,200 @@ protocol = "tcp"
 - Sandboxes auto-scale to zero after ~5s of inactivity. State is preserved in standby and resumes in <25ms
 - `waitForCompletion` has a max timeout of 60 seconds. For longer processes, use `process.wait()` with `maxWait`
 - Secrets should never go in `[env]` — use the Variables-and-secrets page in the Console
+
+## Agent Drive (shared filesystem)
+
+Agent Drive is a distributed filesystem backed by SeaweedFS that can be mounted to multiple sandboxes or agents at any time, including while they are already running. Unlike volumes (block storage attached only at sandbox creation), drives support concurrent read-write access from multiple sandboxes and can be attached/detached dynamically.
+
+> This feature is currently in private preview. During the preview, Agent Drive is only available in the `us-was-1` region. Both drive and sandbox must be in this region.
+
+Use cases:
+- Passing data between sandboxes without intermediary services
+- Storing tool outputs and context histories for other agents
+- Sharing datasets across multiple agents
+- Creating a shared filesystem cache of package dependencies
+
+### Create a drive
+
+```typescript
+import { DriveInstance } from "@blaxel/core";
+
+const drive = await DriveInstance.createIfNotExists({
+  name: "my-drive",
+  region: "us-was-1",
+  displayName: "My Project Drive",     // optional; defaults to name
+  labels: { env: "dev", project: "x" }, // optional
+});
+```
+
+```python
+from blaxel.core.drive import DriveInstance
+
+drive = await DriveInstance.create_if_not_exists(
+    {
+        "name": "my-drive",
+        "region": "us-was-1",
+        "display_name": "My Project Drive",
+        "labels": {"env": "dev", "project": "x"},
+    }
+)
+```
+
+### Mount a drive to a sandbox
+
+```typescript
+import { SandboxInstance } from "@blaxel/core";
+
+const sandbox = await SandboxInstance.get("my-sandbox");
+
+await sandbox.drives.mount({
+  driveName: "my-drive",
+  mountPath: "/mnt/data",
+  drivePath: "/",   // optional; defaults to root of the drive
+});
+```
+
+```python
+from blaxel.core import SandboxInstance
+
+sandbox = await SandboxInstance.get("my-sandbox")
+
+await sandbox.drives.mount(
+    drive_name="my-drive",
+    mount_path="/mnt/data",
+    drive_path="/",
+)
+```
+
+Once mounted, any file written to the mount path inside the sandbox is stored on the drive and persists even after the sandbox is deleted.
+
+### Mount a subdirectory
+
+```typescript
+await sandbox.drives.mount({
+  driveName: "my-drive",
+  mountPath: "/app/project",
+  drivePath: "/projects/alpha",
+});
+```
+
+```python
+await sandbox.drives.mount(
+    drive_name="my-drive",
+    mount_path="/app/project",
+    drive_path="/projects/alpha",
+)
+```
+
+### List, unmount, and delete drives
+
+```typescript
+// List mounted drives on a sandbox
+const mounts = await sandbox.drives.list();
+
+// List all drives
+const drives = await DriveInstance.list();
+
+// Unmount
+await sandbox.drives.unmount("/mnt/data");
+
+// Delete a drive
+await DriveInstance.delete("my-drive");
+// or instance-level:
+const drive = await DriveInstance.get("my-drive");
+await drive.delete();
+```
+
+```python
+mounts = await sandbox.drives.list()
+
+drives = await DriveInstance.list()
+
+await sandbox.drives.unmount("/mnt/data")
+
+await DriveInstance.delete("my-drive")
+# or instance-level:
+drive = await DriveInstance.get("my-drive")
+await drive.delete()
+```
+
+CLI: `bl get drives`
+
+### Full Agent Drive example
+
+```typescript
+import { SandboxInstance, DriveInstance } from "@blaxel/core";
+
+// 1. Create a drive
+const drive = await DriveInstance.createIfNotExists({
+  name: "agent-storage",
+  region: "us-was-1",
+});
+
+// 2. Create a sandbox (use image ID from custom template)
+const sandbox = await SandboxInstance.createIfNotExists({
+  name: "my-agent-sandbox",
+  image: "my-sandbox-image-id",
+  memory: 2048,
+  region: "us-was-1",
+});
+
+// 3. Mount the drive
+await sandbox.drives.mount({
+  driveName: "agent-storage",
+  mountPath: "/mnt/storage",
+  drivePath: "/",
+});
+
+// 4. Write a file to the mounted drive
+await sandbox.fs.write("/mnt/storage/hello.txt", "Hello from the drive!");
+
+// 5. Read it back
+const content = await sandbox.fs.read("/mnt/storage/hello.txt");
+console.log(content); // "Hello from the drive!"
+
+// 6. List mounted drives
+const mounts = await sandbox.drives.list();
+console.log(mounts);
+```
+
+```python
+import asyncio
+from blaxel.core.drive import DriveInstance
+from blaxel.core import SandboxInstance
+
+async def main():
+    drive = await DriveInstance.create_if_not_exists(
+        {"name": "agent-storage", "region": "us-was-1"}
+    )
+
+    sandbox = await SandboxInstance.create_if_not_exists(
+        {
+            "name": "my-agent-sandbox",
+            "image": "my-sandbox-image-id",
+            "memory": 2048,
+            "region": "us-was-1",
+        }
+    )
+
+    await sandbox.drives.mount(
+        drive_name="agent-storage",
+        mount_path="/mnt/storage",
+        drive_path="/",
+    )
+
+    await sandbox.fs.write("/mnt/storage/hello.txt", "Hello from the drive!")
+
+    content = await sandbox.fs.read("/mnt/storage/hello.txt")
+    print(content)
+
+    mounts = await sandbox.drives.list()
+    print(mounts)
+
+asyncio.run(main())
+```
+
+Docs: https://docs.blaxel.ai/Agent-drive/Overview
 
 ## Other Blaxel resources
 
