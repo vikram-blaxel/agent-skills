@@ -10,7 +10,7 @@
   "homepage": "https://blaxel.ai",
   "repository": "https://github.com/blaxel-ai/agent-skills",
   "license": "MIT",
-  "logo": "../assets/blaxel-logo.svg",
+  "logo": "./assets/blaxel-logo.svg",
   "keywords": [
     "sandbox",
     "mcp",
