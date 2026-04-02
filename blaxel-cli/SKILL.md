@@ -117,24 +117,34 @@ bl get agents --help
 
 ## Common Workflows
 
-### Deploy an agent
+### Create a sandbox, run a command, and get its logs
 
 ```bash
-bl new agent my-agent
-cd my-agent
-bl serve --hotreload    # Test locally
-bl deploy               # Deploy to cloud
-bl chat my-agent        # Chat with it
-```
+# 1. Create a sandbox with bl apply
+bl apply -f - <<EOF
+apiVersion: blaxel.ai/v1alpha1
+kind: Sandbox
+metadata:
+  name: my-sandbox
+spec:
+  runtime:
+    image: blaxel/base-image:latest
+    memory: 2048
+  lifecycle:
+    expirationPolicies:
+      - type: ttl-idle
+        value: 1h       # Delete after 1 hour of inactivity. Units: h, d, w
+        action: delete
+EOF
 
-### Manage sandboxes
+# 2. Retrieve sandbox configuration
+bl get sandbox my-sandbox
 
-```bash
-bl get sandboxes                    # List all
-bl get sandbox my-sandbox --watch   # Watch status
-bl connect sandbox my-sandbox       # Interactive terminal
-bl logs sandbox my-sandbox --follow # Stream logs
-bl delete sandbox my-sandbox        # Clean up
+# 3. Execute a command in the sandbox and get stdout of the command
+bl run sandbox my-sandbox --path /process --data '{"command": "echo hello world", "name": "my-cmd", "waitForCompletion": true}'
+
+# 4. Retrieve the logs for that command in case stdout was not sufficient
+bl logs sandbox my-sandbox my-cmd
 ```
 
 ### Multi-workspace deployment
