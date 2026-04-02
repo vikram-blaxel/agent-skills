@@ -11,5 +11,5 @@
   "repository": "https://github.com/blaxel-ai/agent-skills",
   "license": "MIT",
   "keywords": ["sandbox", "microvm", "compute", "isolation", "security", "agent", "volume", "firecracker"],
-  "skills": "./blaxel/"
+  "skills": "./blaxel-sdk/"
 }
