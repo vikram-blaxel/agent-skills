@@ -1,29 +1,30 @@
 # bl login
 
-Authenticate with Blaxel to access your workspace.
-
-A workspace is your organization's isolated environment in Blaxel that contains all your resources (agents, jobs, sandboxes, models, etc.). You must login before using most Blaxel CLI commands.
-
-## Authentication Methods
-
-1. **Browser OAuth** (default) - Interactive login via web browser
-2. **API Key** - For automation and scripts (set `BL_API_KEY` environment variable)
-3. **Client Credentials** - For CI/CD pipelines (set `BL_CLIENT_CREDENTIALS`)
-
-The CLI automatically detects which authentication method to use:
-- If `BL_CLIENT_CREDENTIALS` is set, uses client credentials
-- If `BL_API_KEY` is set, uses API key authentication
-- Otherwise, shows interactive menu to choose browser or API key login
-
-Credentials are stored securely in your system's credential store and persist across sessions.
+> Authenticate with Blaxel to access your workspace.
 
 ## Usage
 
-```
-bl login [workspace] [flags]
-```
+````
+Authenticate with Blaxel to access your workspace.
 
-## Examples
+A workspace is your organization's isolated environment in Blaxel that contains
+all your resources (agents, jobs, sandboxes, models, etc.). You must login before
+using most Blaxel CLI commands.
+
+Authentication Methods:
+1. Browser OAuth (default) - Interactive login via web browser
+2. API Key - For automation and scripts (set BL_API_KEY environment variable)
+3. Client Credentials - For CI/CD pipelines (set BL_CLIENT_CREDENTIALS)
+
+The CLI automatically detects which authentication method to use:
+- If BL_CLIENT_CREDENTIALS is set, uses client credentials
+- If BL_API_KEY is set, uses API key authentication
+- Otherwise, shows interactive menu to choose browser or API key login
+
+Credentials are stored securely in your system's credential store and persist
+across sessions. Use 'bl logout' to remove stored credentials.
+
+Examples:
 
 ```bash
 # Interactive login (shows menu to choose method)
@@ -39,10 +40,19 @@ bl login my-workspace
 # Client credentials for CI/CD
 export BL_CLIENT_CREDENTIALS=your-credentials
 bl login my-workspace
+````
+
+After logging in, all commands will use this workspace by default. Override with
+--workspace flag: bl get agents --workspace other-workspace
+
+Usage: bl login [workspace] [flags]
+
+Flags: -h, --help help for login
+
+Global Flags: -o, --output string Output format. One of: pretty,yaml,json,table
+--skip-version-warning Skip version warning -u, --utc Enable UTC timezone -v,
+--verbose Enable verbose output -w, --workspace string Specify the workspace
+name
+
 ```
-
-## Flags
-
-| Flag | Description |
-|------|-------------|
-| `-h, --help` | Help for login |
+```

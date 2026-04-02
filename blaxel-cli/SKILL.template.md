@@ -6,7 +6,8 @@ allowed-tools: Bash(bl:*), Bash(curl:*)
 
 # Blaxel CLI
 
-A CLI to manage Blaxel cloud resources from the command line: agents, sandboxes, jobs, MCP servers, drives, and more.
+A CLI to manage Blaxel cloud resources from the command line: agents, sandboxes,
+jobs, MCP servers, drives, and more.
 
 ## Prerequisites
 
@@ -38,17 +39,19 @@ bl login my-workspace
 
 All commands support these flags:
 
-| Flag | Description |
-|------|-------------|
-| `-o, --output <format>` | Output format: pretty, yaml, json, table |
-| `-w, --workspace <name>` | Override workspace for this command |
-| `-v, --verbose` | Enable verbose output |
-| `-u, --utc` | Enable UTC timezone |
-| `--skip-version-warning` | Skip version warning |
+| Flag                     | Description                              |
+| ------------------------ | ---------------------------------------- |
+| `-o, --output <format>`  | Output format: pretty, yaml, json, table |
+| `-w, --workspace <name>` | Override workspace for this command      |
+| `-v, --verbose`          | Enable verbose output                    |
+| `-u, --utc`              | Enable UTC timezone                      |
+| `--skip-version-warning` | Skip version warning                     |
 
 ## Non-Interactive Mode
 
-For commands that prompt for input (confirmations, selections), add `-y` or `--yes` to auto-confirm. This is required when running in non-interactive / no-TTY environments (scripts, CI, agents).
+For commands that prompt for input (confirmations, selections), add `-y` or
+`--yes` to auto-confirm. This is required when running in non-interactive /
+no-TTY environments (scripts, CI, agents).
 
 ## Available Commands
 

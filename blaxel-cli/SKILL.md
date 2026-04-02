@@ -6,7 +6,8 @@ allowed-tools: Bash(bl:*), Bash(curl:*)
 
 # Blaxel CLI
 
-A CLI to manage Blaxel cloud resources from the command line: agents, sandboxes, jobs, MCP servers, drives, and more.
+A CLI to manage Blaxel cloud resources from the command line: agents, sandboxes,
+jobs, MCP servers, drives, and more.
 
 ## Prerequisites
 
@@ -38,57 +39,70 @@ bl login my-workspace
 
 All commands support these flags:
 
-| Flag | Description |
-|------|-------------|
-| `-o, --output <format>` | Output format: pretty, yaml, json, table |
-| `-w, --workspace <name>` | Override workspace for this command |
-| `-v, --verbose` | Enable verbose output |
-| `-u, --utc` | Enable UTC timezone |
-| `--skip-version-warning` | Skip version warning |
+| Flag                     | Description                              |
+| ------------------------ | ---------------------------------------- |
+| `-o, --output <format>`  | Output format: pretty, yaml, json, table |
+| `-w, --workspace <name>` | Override workspace for this command      |
+| `-v, --verbose`          | Enable verbose output                    |
+| `-u, --utc`              | Enable UTC timezone                      |
+| `--skip-version-warning` | Skip version warning                     |
 
 ## Non-Interactive Mode
 
-For commands that prompt for input (confirmations, selections), add `-y` or `--yes` to auto-confirm. This is required when running in non-interactive / no-TTY environments (scripts, CI, agents).
+For commands that prompt for input (confirmations, selections), add `-y` or
+`--yes` to auto-confirm. This is required when running in non-interactive /
+no-TTY environments (scripts, CI, agents).
 
 ## Available Commands
 
 ```
-bl login              # Authenticate to a workspace
-bl logout             # Remove stored credentials
-bl workspaces         # List and switch workspaces
-bl new                # Create a new resource from template (agent, mcp, sandbox, job, volume-template)
-bl serve              # Run resource locally for development
-bl deploy             # Build and deploy to Blaxel cloud
-bl push               # Build and push image without deploying
-bl get                # List or inspect resources
-bl delete             # Delete resources
-bl apply              # Apply configuration from YAML files
-bl run                # Execute a resource with input data
-bl chat               # Interactive chat with a deployed agent
-bl connect            # Interactive terminal into a sandbox
-bl logs               # View resource logs
-bl token              # Retrieve authentication token
-bl upgrade            # Upgrade CLI to latest version
-bl version            # Print version number
-bl completion         # Generate shell completion scripts
+bl apply       # Apply configuration changes to resources declaratively using YAML files.
+bl chat        # Start an interactive chat session with a deployed agent.
+bl connect     # Connect into your sandbox resources with interactive interfaces
+bl delete      # Delete Blaxel resources from your workspace.
+bl deploy      # Deploy your Blaxel project to the cloud.
+bl get         # Retrieve information about Blaxel resources in your workspace.
+bl login       # Authenticate with Blaxel to access your workspace.
+bl logout      # Remove stored credentials for a workspace.
+bl logs        # View logs for Blaxel resources.
+bl new         # Create a new Blaxel resource from templates.
+bl push        # Build and push a container image to the Blaxel registry without creating a deployment.
+bl run         # Execute a Blaxel resource with custom input data.
+bl serve       # Start a local development server for your Blaxel project.
+bl token       # Retrieve the authentication token for the specified workspace.
+bl upgrade     # Upgrade the Blaxel CLI to the latest version.
+bl version     # Print the version number
+bl workspaces  # List and manage Blaxel workspaces.
 ```
 
 ## Reference Documentation
 
-- [login](references/login.md) - Authenticate to a workspace
-- [deploy](references/deploy.md) - Build and deploy to Blaxel cloud
-- [get](references/get.md) - List or inspect resources
-- [new](references/new.md) - Create a new resource from template
-- [serve](references/serve.md) - Run resource locally for development
-- [run](references/run.md) - Execute a resource with input data
-- [chat](references/chat.md) - Interactive chat with a deployed agent
-- [logs](references/logs.md) - View resource logs
-- [delete](references/delete.md) - Delete resources
-- [apply](references/apply.md) - Apply configuration from YAML files
-- [push](references/push.md) - Build and push image without deploying
-- [connect](references/connect.md) - Interactive terminal into a sandbox
-- [workspaces](references/workspaces.md) - List and switch workspaces
-- [token](references/token.md) - Retrieve authentication token
+- [apply](references/apply.md) - Apply configuration changes to resources
+  declaratively using YAML files.
+- [chat](references/chat.md) - Start an interactive chat session with a deployed
+  agent.
+- [connect](references/connect.md) - Connect into your sandbox resources with
+  interactive interfaces
+- [delete](references/delete.md) - Delete Blaxel resources from your workspace.
+- [deploy](references/deploy.md) - Deploy your Blaxel project to the cloud.
+- [get](references/get.md) - Retrieve information about Blaxel resources in your
+  workspace.
+- [login](references/login.md) - Authenticate with Blaxel to access your
+  workspace.
+- [logout](references/logout.md) - Remove stored credentials for a workspace.
+- [logs](references/logs.md) - View logs for Blaxel resources.
+- [new](references/new.md) - Create a new Blaxel resource from templates.
+- [push](references/push.md) - Build and push a container image to the Blaxel
+  registry without creating a deployment.
+- [run](references/run.md) - Execute a Blaxel resource with custom input data.
+- [serve](references/serve.md) - Start a local development server for your
+  Blaxel project.
+- [token](references/token.md) - Retrieve the authentication token for the
+  specified workspace.
+- [upgrade](references/upgrade.md) - Upgrade the Blaxel CLI to the latest
+  version.
+- [version](references/version.md) - Print the version number
+- [workspaces](references/workspaces.md) - List and manage Blaxel workspaces.
 
 ## Discovering Options
 
