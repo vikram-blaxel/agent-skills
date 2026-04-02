@@ -1,0 +1,9 @@
+{
+  "version": "1.0.0",
+  "organization": "Blaxel",
+  "date": "April 2026",
+  "abstract": "Manage Blaxel resources from the command line using the bl CLI. Deploy agents, sandboxes, jobs, and MCP servers. Also installs the Blaxel CLI if not present.",
+  "references": [
+    "https://docs.blaxel.ai/cli-reference/introduction"
+  ]
+}
