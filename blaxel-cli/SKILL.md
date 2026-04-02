@@ -147,6 +147,26 @@ bl run sandbox my-sandbox --path /process --data '{"command": "echo hello world"
 bl logs sandbox my-sandbox my-cmd
 ```
 
+### Deploy an agent
+
+```bash
+bl new agent my-agent
+cd my-agent
+bl serve --hotreload    # Test locally
+bl deploy               # Deploy to cloud
+bl chat my-agent        # Chat with it
+```
+
+### Manage sandboxes
+
+```bash
+bl get sandboxes                    # List all
+bl get sandbox my-sandbox --watch   # Watch status
+bl connect sandbox my-sandbox       # Interactive terminal
+bl logs sandbox my-sandbox --follow # Stream logs
+bl delete sandbox my-sandbox        # Clean up
+```
+
 ### Multi-workspace deployment
 
 ```bash
