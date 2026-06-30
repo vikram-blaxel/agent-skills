@@ -82,9 +82,8 @@ claude plugin install blaxel
 Installs both the `blaxel-sdk` and `blaxel-cli` skills.
 
 ### Codex skill
-
-```shell
-codex
+```
+Launch `codex` CLI
 $skill-installer github.com/blaxel-ai/agent-skills
 ```
 Installs both the `blaxel-sdk` and `blaxel-cli` skills.
